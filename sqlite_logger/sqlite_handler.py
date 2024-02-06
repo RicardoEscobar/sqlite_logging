@@ -2,9 +2,9 @@
 
 import logging
 from pathlib import Path
-from sqlite3 import Connection, Cursor
+import sqlite3
 from datetime import datetime, UTC
-from typing import Union
+from typing import Union, List
 
 
 class SqliteHandler(logging.StreamHandler):
@@ -19,6 +19,8 @@ class SqliteHandler(logging.StreamHandler):
         """
         super().__init__()
         self.database_file = None
+        self.connection = None
+        self.cursor = None
 
         # Validate the database_file argument
         if (
@@ -40,6 +42,28 @@ class SqliteHandler(logging.StreamHandler):
                 f"database_file must be a Path or str, not {type(database_file)}"
             )
         self.database_file = database_file
+
+    def open(self):
+        """Open the database connection."""
+        self.connection = sqlite3.connect(self.database_file)
+        self.connection.row_factory = sqlite3.Row
+        self.cursor = self.connection.cursor()
+
+    def close(self):
+        """Close the database connection."""
+        super().close()
+        if self.connection is not None:
+            self.connection.close()
+            self.connection = None
+            self.cursor = None
+
+    def get_columns(self, table_name: str) -> List[str]:
+        """Return a list of columns in the table."""
+        sql = f"PRAGMA table_info({table_name});"
+        self.cursor.execute(sql)
+        columns = self.cursor.fetchall()
+        result = [column["name"] for column in columns]
+        return result
 
     def emit(self, record):
         """Emit a record to the provided SQLite database."""
