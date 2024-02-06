@@ -3,6 +3,7 @@
 import unittest
 from pathlib import Path
 import sqlite3
+import logging
 
 from sqlite_logger.sqlite_handler import SqliteHandler
 
@@ -74,24 +75,38 @@ class TestSqliteHandler(unittest.TestCase):
         # Create a SqliteHandler object
         handler = SqliteHandler()
 
-        # Assert that the get_columns method returns an empty list when the
-        # table does not exist
-        handler.open()
-        columns = handler.get_columns("log_record")
-        self.assertEqual(columns, [])
-        handler.close()
-
         # Assert that the get_columns method returns a list of column names
         # when the table exists
         handler = SqliteHandler(":memory:")
         handler.open()
-        sql = "CREATE TABLE log_record (id INTEGER PRIMARY KEY, message TEXT);"
-        handler.cursor.execute(sql)
-        handler.connection.commit()
-
         columns = handler.get_columns("log_record")
         handler.close()
-        self.assertEqual(columns, ["id", "message"])
+        expected_columns = [
+            "id",
+            "args",
+            "asctime",
+            "asctime_utc",
+            "created",
+            "exc_info",
+            "filename",
+            "funcName",
+            "levelname",
+            "lineno",
+            "message",
+            "module",
+            "msecs",
+            "msg",
+            "name",
+            "pathname",
+            "process",
+            "processName",
+            "relativeCreated",
+            "stack_info",
+            "thread",
+            "threadName",
+            "taskName",
+        ]
+        self.assertEqual(columns, expected_columns)
 
     def test_create_logging_table(self):
         """Test the create_logging_table method."""
@@ -131,16 +146,100 @@ class TestSqliteHandler(unittest.TestCase):
         handler.close()
         self.assertEqual(columns, expected_columns)
 
-    @unittest.skip("Not implemented")
-    def test_emit(self):
-        """Test the emit method."""
-        # pylint: disable=protected-access
+    def test_insert_log(self):
+        """Test the insert_log method."""
         # Create a SqliteHandler object
         handler = SqliteHandler()
 
-        # Verify that the emit method raises a NotImplementedError
-        with self.assertRaises(NotImplementedError):
-            handler.emit(None)
+        # Assert that the insert_log method inserts a log record into the
+        # log_record table
+        handler.open()
+        handler.create_logging_table()
+        values = {
+            "args": None,
+            "asctime": "2021-10-10 10:10:10,000",
+            "asctime_utc": "2021-10-10 10:10:10,000",
+            "created": 1633852210.0,
+            "exc_info": None,
+            "filename": "test_sqlite_handler.py",
+            "funcName": "test_insert_log",
+            "levelname": "INFO",
+            "lineno": 100,
+            "message": "test message",
+            "module": "test_sqlite_handler",
+            "msecs": 0,
+            "msg": "test message",
+            "name": "test_sqlite_handler",
+            "pathname": "test_sqlite_handler.py",
+            "process": 1000,
+            "processName": "MainProcess",
+            "relativeCreated": 0,
+            "stack_info": None,
+            "thread": 1,
+            "threadName": "MainThread",
+            "taskName": "MainTask",
+        }
+        handler.insert_log(values)
+        sql = "SELECT * FROM log_record;"
+        handler.cursor.execute(sql)
+        result = handler.cursor.fetchone()
+        handler.close()
+
+        for key, value in zip(result.keys(), tuple(result)):
+            if key != "id":
+                self.assertEqual(result[key], values[key])
+                self.assertEqual(value, values[key])
+
+    # @unittest.skip("Not implemented")
+    def test_emit(self):
+        """Test the emit method."""
+        handler = SqliteHandler()
+        handler.open()
+        handler.create_logging_table()
+        record = logging.LogRecord(
+            "test_logger",
+            logging.INFO,
+            "test_sqlite_handler.py",
+            100,
+            "test message",
+            None,
+            None,
+            "test_emit",
+        )
+        handler.emit(record)
+        sql = "SELECT * FROM log_record;"
+        handler.cursor.execute(sql)
+        row = handler.cursor.fetchone()
+        for key, value in zip(row.keys(), tuple(row)):
+            if (
+                key != "id"
+                and key != "asctime"
+                and key != "asctime_utc"
+                and key != "message"
+            ):
+                self.assertEqual(str(row[key]), str(getattr(record, key)))
+                self.assertEqual(str(value), str(getattr(record, key)))
+        handler.close()
+
+    def test_get_tables(self):
+        """Test the get_tables method."""
+        # Create a SqliteHandler object
+        handler = SqliteHandler()
+
+        # Assert that the get_tables method returns an empty list when the
+        # database is empty
+        handler.open()
+        tables = handler.get_tables()
+        handler.close()
+        self.assertEqual(tables, ["log_record"])
+
+        # Assert that the get_tables method returns a list of tables in the
+        # database
+        handler = SqliteHandler(":memory:")
+        handler.open()
+        tables = handler.get_tables()
+        self.assertEqual(tables, ["log_record"])
+        handler.close()
 
 
 if __name__ == "__main__":
