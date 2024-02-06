@@ -38,6 +38,11 @@ class TestSqliteHandler(unittest.TestCase):
         with self.assertRaises(TypeError):
             SqliteHandler(1)
 
+        # Assert that the handler raises a ValueError when the database_file is
+        # an empty string
+        with self.assertRaises(ValueError):
+            SqliteHandler("")
+
     @unittest.skip("Not implemented")
     def test_emit(self):
         """Test the emit method."""
