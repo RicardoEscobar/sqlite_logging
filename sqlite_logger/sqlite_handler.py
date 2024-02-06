@@ -1,4 +1,5 @@
 """Custom handler for logging record information on a SQLite3 database."""
+
 import logging
 from pathlib import Path
 from sqlite3 import Connection, Cursor
@@ -17,10 +18,19 @@ class SqliteHandler(logging.StreamHandler):
             new database will be created in memory.
         """
         super().__init__()
-        self.database_file = database_file
+        self.database_file = None
 
-        # TODO: Validate the database_file argument
-        
+        # Validate the database_file argument
+        if isinstance(database_file, str) and database_file != ":memory:":
+            database_file = Path(database_file)
+            database_file.parent.mkdir(parents=True, exist_ok=True)
+        if database_file == ":memory:":
+            self.database_file = database_file
+        elif not isinstance(database_file, Path):
+            raise TypeError(
+                f"database_file must be a Path or str, not {type(database_file)}"
+            )
+        self.database_file = database_file
 
     def emit(self, record):
         """Emit a record to the provided SQLite database."""
@@ -50,9 +60,7 @@ class SqliteHandler(logging.StreamHandler):
                     values.append(formatted_time_utc)
                     insert_columns.append("asctime_utc")
 
-                    formatted_time_local = asctime_local.strftime(format_str)[
-                        :-3
-                    ]
+                    formatted_time_local = asctime_local.strftime(format_str)[:-3]
                     values.append(formatted_time_local)
                     insert_columns.append("asctime")
 
@@ -87,9 +95,7 @@ def main():
     try:
         1 / 0
     except ZeroDivisionError as exeption:
-        logger.error(
-            "%s:\nerror message", exeption, exc_info=True, stack_info=True
-        )
+        logger.error("%s:\nerror message", exeption, exc_info=True, stack_info=True)
         logger.critical(
             "%s:\ncritical message", exeption, exc_info=True, stack_info=True
         )
