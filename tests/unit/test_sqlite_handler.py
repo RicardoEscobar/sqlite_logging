@@ -11,18 +11,32 @@ class TestSqliteHandler(unittest.TestCase):
 
     def test___init__(self):
         """Test the __init__ method."""
-
         # Assert that the handler.database_file attribute is ":memory:" when no
         # database_file argument is provided
         handler = SqliteHandler()
         self.assertEqual(handler.database_file, ":memory:")
 
-        # Create a SqliteHandler object
+        # Assert that the handler.database_file attribute is ":memory:" when
+        # the database_file argument is ":memory:"
+        handler = SqliteHandler(":memory:")
+        self.assertEqual(handler.database_file, ":memory:")
+
+        # Assert that the handler.database attribute is a path object when the
+        # database_file argument is a path object
         database_filepath = Path("logging.db")
         handler = SqliteHandler(database_filepath)
-
-        # Assert that the handler.database attribute is a path object
         self.assertIsInstance(handler.database_file, Path)
+
+        # Assert that the handler.database attribute is a path object when the
+        # database_file argument is a string
+        database_filepath = "logging.db"
+        handler = SqliteHandler(database_filepath)
+        self.assertIsInstance(handler.database_file, Path)
+
+        # Assert that the handler raises a TypeError when the database_file is
+        # not a string or path object
+        with self.assertRaises(TypeError):
+            SqliteHandler(1)
 
     @unittest.skip("Not implemented")
     def test_emit(self):
