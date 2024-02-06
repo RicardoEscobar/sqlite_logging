@@ -93,6 +93,44 @@ class TestSqliteHandler(unittest.TestCase):
         handler.close()
         self.assertEqual(columns, ["id", "message"])
 
+    def test_create_logging_table(self):
+        """Test the create_logging_table method."""
+        # Create a SqliteHandler object
+        handler = SqliteHandler()
+
+        # Assert that the create_logging_table method creates the log_record
+        # table in the database
+        handler.open()
+        handler.create_logging_table()
+        columns = handler.get_columns("log_record")
+        expected_columns = [
+            "id",
+            "args",
+            "asctime",
+            "asctime_utc",
+            "created",
+            "exc_info",
+            "filename",
+            "funcName",
+            "levelname",
+            "lineno",
+            "message",
+            "module",
+            "msecs",
+            "msg",
+            "name",
+            "pathname",
+            "process",
+            "processName",
+            "relativeCreated",
+            "stack_info",
+            "thread",
+            "threadName",
+            "taskName",
+        ]
+        handler.close()
+        self.assertEqual(columns, expected_columns)
+
     @unittest.skip("Not implemented")
     def test_emit(self):
         """Test the emit method."""
