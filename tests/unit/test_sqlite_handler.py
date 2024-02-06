@@ -2,6 +2,7 @@
 
 import unittest
 from pathlib import Path
+import sqlite3
 
 from sqlite_logger.sqlite_handler import SqliteHandler
 
@@ -47,6 +48,50 @@ class TestSqliteHandler(unittest.TestCase):
         # None
         with self.assertRaises(ValueError):
             SqliteHandler(None)
+
+    def test_open(self):
+        """Test the open method."""
+        # Assert that the open method creates a database connection
+        handler = SqliteHandler()
+        handler.open()
+        self.assertIsNotNone(handler.connection)
+        self.assertIsNotNone(handler.cursor)
+        row_type = type(sqlite3.Row)
+        self.assertIsInstance(handler.connection.row_factory, row_type)
+        handler.close()
+
+    def test_close(self):
+        """Test the close method."""
+        # Assert that the close method closes the database connection
+        handler = SqliteHandler()
+        handler.open()
+        handler.close()
+        self.assertIsNone(handler.connection)
+        self.assertIsNone(handler.cursor)
+
+    def test_get_columns(self):
+        """Test the get_columns method."""
+        # Create a SqliteHandler object
+        handler = SqliteHandler()
+
+        # Assert that the get_columns method returns an empty list when the
+        # table does not exist
+        handler.open()
+        columns = handler.get_columns("log_record")
+        self.assertEqual(columns, [])
+        handler.close()
+
+        # Assert that the get_columns method returns a list of column names
+        # when the table exists
+        handler = SqliteHandler(":memory:")
+        handler.open()
+        sql = "CREATE TABLE log_record (id INTEGER PRIMARY KEY, message TEXT);"
+        handler.cursor.execute(sql)
+        handler.connection.commit()
+
+        columns = handler.get_columns("log_record")
+        handler.close()
+        self.assertEqual(columns, ["id", "message"])
 
     @unittest.skip("Not implemented")
     def test_emit(self):
