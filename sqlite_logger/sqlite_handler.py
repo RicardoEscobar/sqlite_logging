@@ -57,6 +57,15 @@ class SqliteHandler(logging.StreamHandler):
             self.connection = None
             self.cursor = None
 
+    def create_logging_table(self, sql_initial_script: Path = None) -> None:
+        """Create the log_record table in the database."""
+        # Initialize sql_initial_script to a default value if it is None
+        if sql_initial_script is None:
+            sql_initial_script = Path("sqlite_logger/logging.sql")
+        with open(sql_initial_script, "r", encoding="utf-8") as sql_file:
+            sql = sql_file.read()
+            self.cursor.executescript(sql)
+
     def get_columns(self, table_name: str) -> List[str]:
         """Return a list of columns in the table."""
         sql = f"PRAGMA table_info({table_name});"
@@ -68,7 +77,7 @@ class SqliteHandler(logging.StreamHandler):
     def emit(self, record):
         """Emit a record to the provided SQLite database."""
         # Get the log_record table column list
-        columns = self.database.get_columns("log_record")
+        columns = self.get_columns("log_record")
         insert_columns = list()
         values = list()
         # list the attributes of the record object
