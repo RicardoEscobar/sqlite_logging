@@ -4,7 +4,7 @@ import logging
 from pathlib import Path
 import sqlite3
 from datetime import datetime, UTC
-from typing import Union, List
+from typing import Union, List, Dict
 
 
 class SqliteHandler(logging.StreamHandler):
@@ -48,6 +48,9 @@ class SqliteHandler(logging.StreamHandler):
         self.connection = sqlite3.connect(self.database_file)
         self.connection.row_factory = sqlite3.Row
         self.cursor = self.connection.cursor()
+        # Create the log_record table in the database if it does not exist
+        if "log_record" not in self.get_tables():
+            self.create_logging_table()
 
     def close(self):
         """Close the database connection."""
@@ -73,6 +76,26 @@ class SqliteHandler(logging.StreamHandler):
         columns = self.cursor.fetchall()
         result = [column["name"] for column in columns]
         return result
+
+    def get_tables(self) -> List[str]:
+        """Return a list of tables in the database."""
+        self.cursor.execute(
+            "SELECT name FROM sqlite_master WHERE type='table' and name != 'sqlite_sequence';"
+        )
+        tables = self.cursor.fetchall()
+
+        # This list comprehension is used to convert the list of tuples
+        # returned to a list of strings.
+        result = [table[0] for table in tables]
+        return result
+
+    def insert_log(self, values: Dict[str, str]) -> None:
+        """Insert a log record into the log_record table."""
+        columns = list(values.keys())
+        values = list(values.values())
+        sql = f"INSERT INTO log_record ({', '.join(columns)}) VALUES ({', '.join(['?']*len(columns))});"
+        self.cursor.execute(sql, values)
+        self.connection.commit()
 
     def emit(self, record):
         """Emit a record to the provided SQLite database."""
@@ -113,19 +136,20 @@ class SqliteHandler(logging.StreamHandler):
                 insert_columns.append(attribute)
 
         # Insert the record into the database
-        self.database.insert("log_record", insert_columns, values)
+        values_dict = dict(zip(insert_columns, values))
+        self.insert_log(values_dict)
 
 
 def main():
     """Main function."""
-    database_path = Path("database/logging.db")
-    sql_initial_script = Path("database/logging.sql")
-    database = Database(database_path)
+    database_path = Path("sqlite_logger/logging.db")
+    sql_initial_script = Path("sqlite_logger/logging.sql")
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
     formatter = logging.Formatter("%(asctime)s; %(levelname)s; %(message)s")
     handler = logging.StreamHandler()
-    sqlite_handler = SqliteHandler(database, sql_initial_script)
+    sqlite_handler = SqliteHandler(database_path)
+    sqlite_handler.open()
     sqlite_handler.setLevel(logging.DEBUG)
     sqlite_handler.setFormatter(formatter)
     handler.setFormatter(formatter)
@@ -141,6 +165,7 @@ def main():
         logger.critical(
             "%s:\ncritical message", exeption, exc_info=True, stack_info=True
         )
+    sqlite_handler.close()
 
 
 if __name__ == "__main__":
