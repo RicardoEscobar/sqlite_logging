@@ -72,8 +72,14 @@ class SqliteHandler(logging.StreamHandler):
     def get_columns(self, table_name: str) -> List[str]:
         """Return a list of columns in the table."""
         sql = f"PRAGMA table_info({table_name});"
-        self.cursor.execute(sql)
-        columns = self.cursor.fetchall()
+        if self.database_file == ":memory:":
+            self.cursor.execute(sql)
+            columns = self.cursor.fetchall()
+        else:
+            self.open()
+            self.cursor.execute(sql)
+            columns = self.cursor.fetchall()
+            self.close()
         result = [column["name"] for column in columns]
         return result
 
@@ -137,7 +143,12 @@ class SqliteHandler(logging.StreamHandler):
 
         # Insert the record into the database
         values_dict = dict(zip(insert_columns, values))
-        self.insert_log(values_dict)
+        if self.database_file == ":memory:":
+            self.insert_log(values_dict)
+        else:
+            self.open()
+            self.insert_log(values_dict)
+            self.close()
 
 
 def main():
@@ -149,7 +160,7 @@ def main():
     formatter = logging.Formatter("%(asctime)s; %(levelname)s; %(message)s")
     handler = logging.StreamHandler()
     sqlite_handler = SqliteHandler(database_path)
-    sqlite_handler.open()
+    # sqlite_handler.open()
     sqlite_handler.setLevel(logging.DEBUG)
     sqlite_handler.setFormatter(formatter)
     handler.setFormatter(formatter)
@@ -165,7 +176,7 @@ def main():
         logger.critical(
             "%s:\ncritical message", exeption, exc_info=True, stack_info=True
         )
-    sqlite_handler.close()
+    # sqlite_handler.close()
 
 
 if __name__ == "__main__":
