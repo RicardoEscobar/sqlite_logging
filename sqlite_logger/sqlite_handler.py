@@ -25,6 +25,7 @@ class SqliteHandler(logging.StreamHandler):
             isinstance(database_file, str)
             and database_file != ":memory:"
             and database_file != ""
+            and database_file is not None
         ):
             database_file = Path(database_file)
             database_file.parent.mkdir(parents=True, exist_ok=True)
@@ -32,6 +33,8 @@ class SqliteHandler(logging.StreamHandler):
             self.database_file = database_file
         elif database_file == "":
             raise ValueError("database_file cannot be an empty string")
+        elif database_file is None:
+            raise ValueError("database_file cannot be None")
         elif not isinstance(database_file, Path):
             raise TypeError(
                 f"database_file must be a Path or str, not {type(database_file)}"
