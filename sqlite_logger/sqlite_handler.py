@@ -149,38 +149,3 @@ class SqliteHandler(logging.StreamHandler):
             self.open()
             self.insert_log(values_dict)
             self.close()
-
-
-def main():
-    """Main function."""
-    database_path = Path("sqlite_logger/logging.db")
-    sql_initial_script = Path("sqlite_logger/logging.sql")
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    formatter = logging.Formatter("%(asctime)s; %(levelname)s; %(message)s")
-    handler = logging.StreamHandler()
-    handler.setLevel(logging.DEBUG)
-    handler.setFormatter(formatter)
-    sqlite_handler = SqliteHandler(database_path)
-    # sqlite_handler.open()
-    sqlite_handler.setLevel(logging.DEBUG)
-    sqlite_handler.setFormatter(formatter)
-    handler.setFormatter(formatter)
-    logger.addHandler(sqlite_handler)
-    logger.addHandler(handler)
-
-    logger.debug("debug message")
-    logger.info("info message")
-    logger.warning("warn message")
-    try:
-        1 / 0
-    except ZeroDivisionError as exeption:
-        logger.error("%s:\nerror message", exeption, exc_info=True, stack_info=True)
-        logger.critical(
-            "%s:\ncritical message", exeption, exc_info=True, stack_info=True
-        )
-    # sqlite_handler.close()
-
-
-if __name__ == "__main__":
-    main()
